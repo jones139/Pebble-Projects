@@ -1,0 +1,32 @@
+{
+  "uuid": "0030006c-9aa5-4c64-a668-deebe58750ca",
+  "shortName": "pacer",
+  "longName": "pacer",
+  "companyName": "OpenSeizureDetector",
+  "versionCode": 1,
+  "versionLabel": "1.0",
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {
+    "timestamp": 10,
+    "lat": 11,
+    "lon": 12,
+    "speed": 13,
+    "heading": 14,
+    "alt": 15,
+    "acc": 16,
+    "alt_acc": 17,
+    "datetime":18,
+    "day":19,
+    "mon":20,
+    "year":21,
+    "hour":22,
+    "min":23,
+    "sec":24
+  },
+  "resources": {
+    "media": []
+  },
+  "capabilities": [ "location" ]
+}
