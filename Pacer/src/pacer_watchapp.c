@@ -1,8 +1,29 @@
+/**
+  pacer - running pacemaker app.
+
+  Copyright Graham Jones, 2015.
+
+
+  Pacer is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  Pacer is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License
+  along with pebble_sd.  If not, see <http://www.gnu.org/licenses/>.
+
+*/
 #include <pebble.h>
 
 static Window *window;
-static TextLayer *text_layer;
 static TextLayer *msg_layer;
+static TextLayer *top_layer;
+static TextLayer *bot_layer;
 
 #define APPSTATE_STOPPED 0
 #define APPSTATE_RUNNING 1
@@ -32,7 +53,7 @@ static TextLayer *msg_layer;
 /** A structure to hold position data received from phone
  */
 typedef struct {
-  long ts;  // timestamp (sec)
+  time_t ts;  // timestamp (sec)
   long lat,lon, acc; // location and accuracy (deg and m).
   long speed,heading; // speed (m/s),heading
   long alt,alt_acc;  // altitude and altitude accuracy (m)
@@ -51,16 +72,18 @@ int targetTime = 0; // set in init to match default distance.
 int currDist = 0;  // Current distance covered in metres.
 int currTime = 0;  // Current elapsed time in seconds.
 char msgStr[50];
+time_t startTime = 0;  // Start time in seconds from start 1970.
 
 Pos curPos;   // current position
 Pos prevPos;   // previous position
+
+
 
 /*************************************************************
  * Communications with Phone
  *************************************************************/
 void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   char strBuf[50];
-  int ts;
   int day=0,mon=1,year=1900,hour=0,min=0,sec=0;
   struct tm tmstr;
   time_t dataTime;
@@ -72,37 +95,37 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   // Process all pairs present
   while(t != NULL) {
     // Process this pair's key
-    APP_LOG(APP_LOG_LEVEL_INFO,"Key=%d",(int) t->key);
+    //APP_LOG(APP_LOG_LEVEL_INFO,"Key=%d",(int) t->key);
     switch (t->key) {
     case KEY_TIMESTAMP:
       curPos.ts = (long)t->value->uint32;
       strncpy(strBuf,t->value->cstring,sizeof(strBuf));
       APP_LOG(APP_LOG_LEVEL_INFO,"ts=%s",strBuf);
-      APP_LOG(APP_LOG_LEVEL_INFO,"curPos.ts = %lu",curPos.ts);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"curPos.ts = %lu",curPos.ts);
       break;
     case KEY_DAY:
       day = (int)t->value->int32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"day = %d",day);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"day = %d",day);
       break;
     case KEY_MON:
       mon = (int)t->value->int32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"mon = %d",mon);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"mon = %d",mon);
       break;
     case KEY_YEAR:
       year = (int)t->value->int32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"year = %d",year);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"year = %d",year);
       break;
     case KEY_HOUR:
       hour = (int)t->value->int32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"hour = %d",hour);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"hour = %d",hour);
       break;
     case KEY_MIN:
       min = (int)t->value->int32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"min = %d",min);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"min = %d",min);
       break;
     case KEY_SEC:
       sec = (int)t->value->int32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"sec = %d",sec);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"sec = %d",sec);
       break;
     case KEY_LAT:
       curPos.lat = (int)t->value->int32;
@@ -143,9 +166,15 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   tmstr.tm_hour = hour;
   tmstr.tm_min = min;
   tmstr.tm_sec = sec;
+  tmstr.tm_isdst = 0;
+
+  APP_LOG(APP_LOG_LEVEL_INFO,"%02d/%02d/%04d %02d:%02d:%02d",
+	  tmstr.tm_mday,tmstr.tm_mon,tmstr.tm_year,
+	  tmstr.tm_hour,tmstr.tm_min,tmstr.tm_sec);
 
   // mktime crashes pebble - may be a bug in pebble c implementation?
-  //dataTime = mktime(&tmstr);
+  dataTime = 0;
+  dataTime = mktime(&tmstr);
   APP_LOG(APP_LOG_LEVEL_INFO,"dataTime = %ld",dataTime);
   
 }
@@ -184,11 +213,41 @@ void sendSdData() {
 }
 
 
+/************************************************************************
+ * clock_tick_handler() - 
+ * This function is the handler for tick events.
+*/
+static void clock_tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  static char s_time_buffer[16];
+  static char s_alarm_buffer[64];
+  static char s_buffer[256];
+  static int analysisCount=0;
+
+  text_layer_set_text(msg_layer, "PACER");
+
+  // and update clock display.
+  if (clock_is_24h_style()) {
+    strftime(s_time_buffer, sizeof(s_time_buffer), "%H:%M:%S", tick_time);
+  } else {
+    strftime(s_time_buffer, sizeof(s_time_buffer), "%I:%M:%S", tick_time);
+  }
+  BatteryChargeState charge_state = battery_state_service_peek();
+  snprintf(s_time_buffer,sizeof(s_time_buffer),
+	   "%s %d%%", 
+	   s_time_buffer,
+	   charge_state.charge_percent);
+  text_layer_set_text(bot_layer, s_time_buffer);
+}
+
+
+
 /**
  * Reset the pacer app data
  */
 void reset_pacer() {
-
+  startTime = 0;
+  currDist = 0;
+  currTime = 0;
 }
 
 /**
@@ -196,6 +255,7 @@ void reset_pacer() {
  */
 void start_pacer() {
   APP_LOG(APP_LOG_LEVEL_DEBUG,"start_pacer()");
+  startTime = time(NULL);
 }
 
 /** 
@@ -224,7 +284,7 @@ static void displayUI() {
   } else if (appState == APPSTATE_TIMESET) {
     snprintf(strBuf,sizeof(strBuf),"Target Time: %d min",targetTime);
   } 
-  text_layer_set_text(text_layer, strBuf);      
+  text_layer_set_text(top_layer, strBuf);      
 }
 
 /**
@@ -333,18 +393,34 @@ static void window_load(Window *window) {
   msg_layer = text_layer_create((GRect) { .origin = { 0, 0 }, .size = { bounds.size.w, 20 } });
   layer_add_child(window_layer, text_layer_get_layer(msg_layer));
 
-  text_layer = text_layer_create((GRect) { .origin = { 0, 72 }, .size = { bounds.size.w, 20 } });
-  text_layer_set_text(text_layer, "Press a button");
-  text_layer_set_text_alignment(text_layer, GTextAlignmentCenter);
-  layer_add_child(window_layer, text_layer_get_layer(text_layer));
+  top_layer = text_layer_create((GRect) { 
+      .origin={ 0, 21 },
+	.size = { bounds.size.w,60 } });
+  bot_layer = text_layer_create((GRect) { 
+      .origin={ 0, 81 },
+	.size = { bounds.size.w,60 } });
+
+  text_layer_set_text(top_layer, "Top Layer");
+  text_layer_set_text_alignment(top_layer, GTextAlignmentCenter);
+  text_layer_set_font(top_layer, 
+		      fonts_get_system_font(FONT_KEY_GOTHIC_24));
+  layer_add_child(window_layer, text_layer_get_layer(top_layer));
+
+  text_layer_set_text(bot_layer, "Bottom Layer");
+  text_layer_set_text_alignment(bot_layer, GTextAlignmentCenter);
+  text_layer_set_font(bot_layer, 
+		      fonts_get_system_font(FONT_KEY_GOTHIC_24));
+  layer_add_child(window_layer, text_layer_get_layer(bot_layer));
+
 }
 
 /**
  * Destroy UI components when the window is destroyed
  */
 static void window_unload(Window *window) {
-  text_layer_destroy(text_layer);
   text_layer_destroy(msg_layer);
+  text_layer_destroy(top_layer);
+  text_layer_destroy(bot_layer);
 }
 
 /**
@@ -371,6 +447,11 @@ static void init(void) {
   });
   const bool animated = true;
   window_stack_push(window, animated);
+
+  /* Subscribe to TickTimerService */
+  APP_LOG(APP_LOG_LEVEL_DEBUG,"Intialising Clock Timer....");
+  tick_timer_service_subscribe(SECOND_UNIT, clock_tick_handler);
+
 }
 
 /**
@@ -385,9 +466,7 @@ static void deinit(void) {
  */
 int main(void) {
   init();
-
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
-
   app_event_loop();
   deinit();
 }
