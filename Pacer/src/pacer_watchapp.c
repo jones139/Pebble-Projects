@@ -49,6 +49,10 @@ static TextLayer *bot_layer;
 #define KEY_HOUR 22
 #define KEY_MIN 23
 #define KEY_SEC 24
+#define KEY_COMMAND 25
+#define KEY_START 26
+#define KEY_STOP 27
+#define KEY_RESET 28
 
 /** A structure to hold position data received from phone
  */
@@ -77,6 +81,16 @@ time_t startTime = 0;  // Start time in seconds from start 1970.
 Pos curPos;   // current position
 Pos prevPos;   // previous position
 
+
+/** 
+ * Send a command to the phone
+ */
+void sendCommand(int command) {
+  DictionaryIterator *iterator;
+  app_message_outbox_begin(&iterator);
+  dict_write_int(iterator,KEY_COMMAND,&command,sizeof(int),true);
+  app_message_outbox_send();
+}
 
 
 /*************************************************************
@@ -191,26 +205,6 @@ void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
   APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
 }
 
-/***************************************************
- * Send some Seizure Detecto Data to the phone app.
- */
-void sendSdData() {
-  DictionaryIterator *iter;
-  APP_LOG(APP_LOG_LEVEL_DEBUG,"sendSdData()");
-  app_message_outbox_begin(&iter);
-  /*dict_write_uint8(iter,KEY_DATA_TYPE,(uint8_t)DATA_TYPE_RESULTS);
-  dict_write_uint8(iter,KEY_ALARMSTATE,(uint8_t)alarmState);
-  dict_write_uint32(iter,KEY_MAXVAL,(uint32_t)maxVal);
-  dict_write_uint32(iter,KEY_MAXFREQ,(uint32_t)maxFreq);
-  dict_write_uint32(iter,KEY_SPECPOWER,(uint32_t)specPower);
-  dict_write_uint32(iter,KEY_ROIPOWER,(uint32_t)roiPower);
-  // Send simplified spectrum - just 10 integers so it fits in a message.
-  dict_write_data(iter,KEY_SPEC_DATA,(uint8_t*)(&simpleSpec[0]),
-		  10*sizeof(simpleSpec[0]));
-  */
-  app_message_outbox_send();
-  APP_LOG(APP_LOG_LEVEL_DEBUG,"sent Results");
-}
 
 
 /************************************************************************
@@ -248,6 +242,7 @@ void reset_pacer() {
   startTime = 0;
   currDist = 0;
   currTime = 0;
+  sendCommand(KEY_RESET);
 }
 
 /**
@@ -256,6 +251,7 @@ void reset_pacer() {
 void start_pacer() {
   APP_LOG(APP_LOG_LEVEL_DEBUG,"start_pacer()");
   startTime = time(NULL);
+  sendCommand(KEY_START);
 }
 
 /** 
@@ -263,6 +259,7 @@ void start_pacer() {
  */
 void stop_pacer() {
   APP_LOG(APP_LOG_LEVEL_DEBUG,"stop_pacer()");
+  sendCommand(KEY_STOP);
 }
 
 

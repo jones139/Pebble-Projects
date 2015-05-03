@@ -18,16 +18,53 @@
   along with pebble_sd.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-var id;
+var Pacer = {};
+
+var Pacer.id;
+var Pacer.prefPos = null;
 
 /**
  * Options for location determination
  */
-var locationOptions = {
+var Pacer.locationOptions = {
     enableHighAccuracy: true,
     maximumAge:0,
     timeout: 50
 };
+
+var Pacer.radians = function(deg) {
+    var pi = 3.14159265;
+    return 2*pi*deg/360;
+}
+
+/**
+ * Return distance in metres between two lat,lon points.
+ * Based no http://www.movable-type.co.uk/scripts/latlong.html.
+ * Expects pos to include {coords.latitude, coords.longitude}.
+ */
+var Pacer.dist = function(pos1,pos2) {
+    var lat1 = radians(pos1.coords.latitude);
+    var lon1 = radians(pos1.coords.longitude);
+    var lat2 = radians(pos2.coords.latitude);
+    var lon2 = radians(pos2.coords.longitude);
+
+    var R = 6371000; // metres
+    var φ1 = lat1;
+    var φ2 = lat2;
+    var Δφ = (lat2-lat1);
+    var Δλ = (lon2-lon1);
+    
+    var a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    var d = R * c;
+    return d;
+}
+
+
+
 
 /**
  * called when we successfuly determine our location
@@ -35,6 +72,8 @@ var locationOptions = {
 function locationSuccess(pos) {
     console.log('Location Changed!');
     console.log(JSON.stringify(pos));
+    console.log("dist="+dist({coords:{latitude:50,longitude:0}},
+			     {coords:{latitude:50,longitude:1}}));
     sendLoc(pos);
 };
 
@@ -131,9 +170,13 @@ Pebble.addEventListener("ready",
 );
 
 
+
 Pebble.addEventListener('appmessage',
 			function(e) {
 			    console.log('Received Message:' 
 					+ JSON.stringify(e.payload));
+			    if ("command" in e.payload) {
+				console.log("Command = "+e.payload.command);
+			    }
 			}
 		       );

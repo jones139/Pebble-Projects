@@ -23,7 +23,11 @@
     "year":21,
     "hour":22,
     "min":23,
-    "sec":24
+    "sec":24,
+      "command":25,
+      "start":26,
+      "stop":27,
+      "reset":28
   },
   "resources": {
     "media": []
