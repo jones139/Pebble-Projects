@@ -102,7 +102,7 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   struct tm tmstr;
   time_t dataTime;
 
-  APP_LOG(APP_LOG_LEVEL_INFO, "Message received!");
+  //APP_LOG(APP_LOG_LEVEL_INFO, "Message received!");
   // Get the first pair
   Tuple *t = dict_read_first(iterator);
 
@@ -114,7 +114,7 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context) {
     case KEY_TIMESTAMP:
       curPos.ts = (long)t->value->uint32;
       strncpy(strBuf,t->value->cstring,sizeof(strBuf));
-      APP_LOG(APP_LOG_LEVEL_INFO,"ts=%s",strBuf);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"ts=%s",strBuf);
       //APP_LOG(APP_LOG_LEVEL_INFO,"curPos.ts = %lu",curPos.ts);
       break;
     case KEY_DAY:
@@ -143,31 +143,31 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context) {
       break;
     case KEY_LAT:
       curPos.lat = (int)t->value->int32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"curPos.lat = %ld",curPos.lat);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"curPos.lat = %ld",curPos.lat);
       break;
     case KEY_LON:
       curPos.lon = (long)t->value->int32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"curPos.lon = %ld",curPos.lon);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"curPos.lon = %ld",curPos.lon);
       break;
     case KEY_ACC:
       curPos.acc = (long)t->value->uint32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"curPos.acc = %ld",curPos.acc);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"curPos.acc = %ld",curPos.acc);
       break;
     case KEY_SPEED:
       curPos.speed = (long)t->value->uint16;
-      APP_LOG(APP_LOG_LEVEL_INFO,"curPos.speed = %ld",curPos.speed);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"curPos.speed = %ld",curPos.speed);
       break;
     case KEY_HEADING:
       curPos.heading = (long)t->value->int16;
-      APP_LOG(APP_LOG_LEVEL_INFO,"curPos.heading = %ld",curPos.heading);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"curPos.heading = %ld",curPos.heading);
       break;
     case KEY_ALT:
       curPos.alt = (long)t->value->uint32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"curPos.alt = %ld",curPos.alt);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"curPos.alt = %ld",curPos.alt);
       break;
     case KEY_ALT_ACC:
       curPos.alt_acc = (long)t->value->uint32;
-      APP_LOG(APP_LOG_LEVEL_INFO,"curPos.alt_acc = %ld",curPos.alt_acc);
+      //APP_LOG(APP_LOG_LEVEL_INFO,"curPos.alt_acc = %ld",curPos.alt_acc);
       break;
     }
     // Get next pair, if any
@@ -182,15 +182,14 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   tmstr.tm_sec = sec;
   tmstr.tm_isdst = 0;
 
-  APP_LOG(APP_LOG_LEVEL_INFO,"%02d/%02d/%04d %02d:%02d:%02d",
+  APP_LOG(APP_LOG_LEVEL_INFO,"Message Received - %02d/%02d/%04d %02d:%02d:%02d",
 	  tmstr.tm_mday,tmstr.tm_mon,tmstr.tm_year,
 	  tmstr.tm_hour,tmstr.tm_min,tmstr.tm_sec);
 
-  // mktime crashes pebble - may be a bug in pebble c implementation?
-  dataTime = 0;
+  // mktime crashes pebble on skd 2.8 - works on 2.9
   dataTime = mktime(&tmstr);
-  APP_LOG(APP_LOG_LEVEL_INFO,"dataTime = %ld",dataTime);
-  
+  //APP_LOG(APP_LOG_LEVEL_INFO,"dataTime = %ld",dataTime);
+  return (void)dataTime;
 }
 
 void inbox_dropped_callback(AppMessageResult reason, void *context) {
